@@ -140,7 +140,7 @@
     score = 0;
     timeLeft = level === 1 ? 18 : level === 2 ? 14 : 10;
     neededScore = level === 1 ? 20 : level === 2 ? 15 : 8;
-    itemSpeed = level === 1 ? 1 : 2;
+    itemSpeed = level === 1 ? 3 : 4;
 
     for (let i = 0; i < (level === 1 ? 30 : 20); i++) greenLeaves.push(newFallingItem(greenLeafImg, (i * timeLeft) / 30));
     for (let i = 0; i < (level === 1 ? 8 : 6); i++) rottenLeaves.push(newFallingItem(rottenLeafImg, (i * timeLeft) / 8));
