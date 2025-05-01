@@ -5,23 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Gazelle Leaf Hunt</title>
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
       background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
     }
+
     canvas {
+      display: block;
       background: #fff;
     }
+
     #gameOverScreen, #startScreen {
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       background: rgba(0, 0, 0, 0.8);
       color: white;
       font-family: Arial, sans-serif;
@@ -30,29 +32,34 @@
       padding-top: 200px;
       z-index: 10;
     }
+
     #gameOverScreen button, #startScreen button {
       font-size: 20px;
       padding: 10px 20px;
       cursor: pointer;
       margin-top: 20px;
     }
-    #gameOverScreen { display: none; }
+
+    #gameOverScreen {
+      display: none;
+    }
   </style>
 </head>
 <body>
-<div id="gameContainer" style="position: relative; width: 1000px; height: 600px;">
-  <canvas id="gameCanvas" width="1000" height="600"></canvas>
-  <div id="startScreen">
-    <div>🦌 Gazelle Leaf Hunt</div>
-    <br>
-    <button onclick="startGame()">Start Game</button>
-  </div>
-  <div id="gameOverScreen">
-    <div id="gameOverMessage">Game Over</div>
-    <br>
-    <button onclick="restartGame()">Play Again</button>
-  </div>
+<canvas id="gameCanvas"></canvas>
+
+<div id="startScreen">
+  <div>🦌 Gazelle Leaf Hunt</div>
+  <br>
+  <button onclick="startGame()">Start Game</button>
 </div>
+
+<div id="gameOverScreen">
+  <div id="gameOverMessage">Game Over</div>
+  <br>
+  <button onclick="restartGame()">Play Again</button>
+</div>
+
 <script>
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
@@ -82,10 +89,32 @@
   backgroundMusic2.loop = true;
   backgroundMusic3.loop = true;
 
-  const gazelle = { x: canvas.width / 2 - 50, y: canvas.height - 200, width: 200, height: 200, speed: 10 };
+  const gazelle = { x: 0, y: 0, width: 0, height: 0, speed: 10 };
   let leftPressed = false, rightPressed = false, greenLeaves = [], rottenLeaves = [], bombs = [];
   let score = 0, neededScore = 7, level = 1, timeLeft = 25, itemSpeed = 2, gameEnded = false;
   let timerInterval, animationFrame;
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    gazelle.width = canvas.width * 0.1;
+    gazelle.height = gazelle.width;
+    gazelle.y = canvas.height - gazelle.height - 10;
+    gazelle.x = Math.min(Math.max(gazelle.x, 0), canvas.width - gazelle.width);
+
+    [...greenLeaves, ...rottenLeaves, ...bombs].forEach(item => {
+      item.width = canvas.width * 0.04;
+      item.height = canvas.height * 0.08;
+    });
+  }
+
+  window.addEventListener("resize", () => {
+    resizeCanvas();
+    draw();
+  });
+
+  resizeCanvas();
 
   function startGame() {
     document.getElementById("startScreen").style.display = "none";
@@ -97,22 +126,30 @@
     gameEnded = false;
     leftPressed = rightPressed = false;
     greenLeaves = [], rottenLeaves = [], bombs = [];
+
     background = new Image();
     background.onload = () => draw();
     background.src = bgImages[level - 1];
-    gazelle.x = canvas.width / 2 - 50;
+
+    gazelle.width = canvas.width * 0.1;
+    gazelle.height = gazelle.width;
+    gazelle.x = canvas.width / 2 - gazelle.width / 2;
+    gazelle.y = canvas.height - gazelle.height - 10;
+    gazelle.speed = level === 1 ? 5 : level === 2 ? 7 : 9;
+
     score = 0;
     timeLeft = level === 1 ? 18 : level === 2 ? 14 : 10;
     neededScore = level === 1 ? 20 : level === 2 ? 15 : 8;
-    itemSpeed = level === 1 ? 1 : level === 2 ? 2 : 2;
-    gazelle.speed = level === 1 ? 5 : level === 2 ? 7 : 9;
+    itemSpeed = level === 1 ? 1 : 2;
 
     for (let i = 0; i < (level === 1 ? 30 : 20); i++) greenLeaves.push(newFallingItem(greenLeafImg, (i * timeLeft) / 30));
     for (let i = 0; i < (level === 1 ? 8 : 6); i++) rottenLeaves.push(newFallingItem(rottenLeafImg, (i * timeLeft) / 8));
     if (level === 3) for (let i = 0; i < 5; i++) bombs.push(newFallingItem(bombImg, (i * timeLeft) / 5));
 
     clearInterval(timerInterval);
-    timerInterval = setInterval(() => { if (timeLeft > 0 && !gameEnded) timeLeft--; }, 1000);
+    timerInterval = setInterval(() => {
+      if (timeLeft > 0 && !gameEnded) timeLeft--;
+    }, 1000);
 
     backgroundMusic1.pause(); backgroundMusic2.pause(); backgroundMusic3.pause();
     backgroundMusic1.currentTime = 0; backgroundMusic2.currentTime = 0; backgroundMusic3.currentTime = 0;
@@ -120,20 +157,43 @@
     else if (level === 2) backgroundMusic2.play();
     else if (level === 3) backgroundMusic3.play();
 
-    alert({1: "🌿 Welcome to Gazelle Leaf Hunt!\nHelp her avoid the rotten ones!", 2: "🌬 More rotten leaves now!", 3: "🔥 Bombs incoming!"}[level]);
+    alert({
+      1: "🌿 Welcome to Gazelle Leaf Hunt!\nHelp her avoid the rotten ones!",
+      2: "🌬 More rotten leaves now!",
+      3: "🔥 Bombs incoming!"
+    }[level]);
   }
 
   function newFallingItem(image, delay = 0) {
-    return { img: image, x: Math.random() * (canvas.width - 40), y: -Math.random() * 1000, width: 40, height: 50, speed: itemSpeed, startDelay: delay };
+    const width = canvas.width * 0.04;
+    const height = canvas.height * 0.08;
+    return {
+      img: image,
+      x: Math.random() * (canvas.width - width),
+      y: -Math.random() * 1000,
+      width,
+      height,
+      speed: itemSpeed,
+      startDelay: delay
+    };
   }
 
-  window.addEventListener("keydown", (e) => { if (e.keyCode === 37) leftPressed = true; if (e.keyCode === 39) rightPressed = true; });
-  window.addEventListener("keyup", (e) => { if (e.keyCode === 37) leftPressed = false; if (e.keyCode === 39) rightPressed = false; });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") leftPressed = true;
+    if (e.key === "ArrowRight") rightPressed = true;
+  });
+
+  window.addEventListener("keyup", (e) => {
+    if (e.key === "ArrowLeft") leftPressed = false;
+    if (e.key === "ArrowRight") rightPressed = false;
+  });
 
   function draw() {
     ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
     ctx.drawImage(gazelleImg, gazelle.x, gazelle.y, gazelle.width, gazelle.height);
-    drawItems(greenLeaves); drawItems(rottenLeaves); drawItems(bombs);
+    drawItems(greenLeaves);
+    drawItems(rottenLeaves);
+    drawItems(bombs);
     drawUI();
   }
 
@@ -143,12 +203,15 @@
 
   function drawUI() {
     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-    ctx.fillRect(20, 10, 960, 50);
+    ctx.fillRect(canvas.width * 0.02, canvas.height * 0.01, canvas.width * 0.96, canvas.height * 0.08);
     ctx.fillStyle = "#fff";
-    ctx.font = "20px Arial";
-    ctx.fillText(`Leaves: ${score}/${neededScore}`, 40, 40);
-    ctx.fillText(`Level: ${level}`, 450, 40);
-    ctx.fillText(`Time: ${timeLeft}`, 850, 40);
+
+    const fontSize = Math.max(16, Math.min(canvas.height * 0.03, 40));
+    ctx.font = `${fontSize}px Arial`;
+
+    ctx.fillText(`Leaves: ${score}/${neededScore}`, canvas.width * 0.04, canvas.height * 0.06);
+    ctx.fillText(`Level: ${level}`, canvas.width * 0.45, canvas.height * 0.06);
+    ctx.fillText(`Time: ${timeLeft}`, canvas.width * 0.85, canvas.height * 0.06);
   }
 
   function update() {
@@ -157,6 +220,7 @@
     if (rightPressed) gazelle.x += gazelle.speed;
     if (gazelle.x < -gazelle.width) gazelle.x = canvas.width;
     if (gazelle.x > canvas.width) gazelle.x = -gazelle.width;
+
     moveItems(greenLeaves, "green");
     moveItems(rottenLeaves, "rotten");
     moveItems(bombs, "bomb");
@@ -166,12 +230,17 @@
   function moveItems(items, type) {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      if (item.startDelay > 0) { item.startDelay -= 1 / 60; continue; }
+      if (item.startDelay > 0) {
+        item.startDelay -= 1 / 60;
+        continue;
+      }
       item.y += item.speed;
       if (isColliding(gazelle, item)) {
-        if (type === "green") { score++; eatSound.play(); }
-        else if (type === "rotten") { score = Math.max(0, score - 1); wrongSound.play(); }
-        else if (type === "bomb") {
+        if (type === "green") {
+          score++; eatSound.play();
+        } else if (type === "rotten") {
+          score = Math.max(0, score - 1); wrongSound.play();
+        } else if (type === "bomb") {
           gameEnded = true;
           explodeSound.play();
           cancelAnimationFrame(animationFrame);
@@ -181,12 +250,17 @@
         }
         items.splice(i, 1); i--;
       }
-      if (item.y > canvas.height) { items.splice(i, 1); i--; }
+      if (item.y > canvas.height) {
+        items.splice(i, 1); i--;
+      }
     }
   }
 
   function isColliding(a, b) {
-    return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+    return a.x < b.x + b.width &&
+           a.x + a.width > b.x &&
+           a.y < b.y + b.height &&
+           a.y + a.height > b.y;
   }
 
   function checkWinOrLose() {
@@ -202,9 +276,7 @@
       } else {
         showGameOverScreen("🏆 Congratulations! You completed all levels!");
       }
-      return;
-    }
-    if (timeLeft <= 0) {
+    } else if (timeLeft <= 0) {
       gameEnded = true;
       cancelAnimationFrame(animationFrame);
       clearInterval(timerInterval);
