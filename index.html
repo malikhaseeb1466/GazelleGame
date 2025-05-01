@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gazelle Leaf Hunt</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      background: #fff;
+    }
+    #gameOverScreen, #startScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      font-family: Arial, sans-serif;
+      font-size: 28px;
+      text-align: center;
+      padding-top: 200px;
+      z-index: 10;
+    }
+    #gameOverScreen button, #startScreen button {
+      font-size: 20px;
+      padding: 10px 20px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    #gameOverScreen { display: none; }
+  </style>
+</head>
+<body>
+<div id="gameContainer" style="position: relative; width: 1000px; height: 600px;">
+  <canvas id="gameCanvas" width="1000" height="600"></canvas>
+  <div id="startScreen">
+    <div>🦌 Gazelle Leaf Hunt</div>
+    <br>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+  <div id="gameOverScreen">
+    <div id="gameOverMessage">Game Over</div>
+    <br>
+    <button onclick="restartGame()">Play Again</button>
+  </div>
+</div>
+<script>
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+
+  const bgImages = ["images/background1.jpg", "images/background2.jpg", "images/background3.jpg"];
+  let background = new Image();
+  background.src = bgImages[0];
+
+  const gazelleImg = new Image();
+  gazelleImg.src = "images/gazelle.png";
+  const greenLeafImg = new Image();
+  greenLeafImg.src = "images/green_leaf.png";
+  const rottenLeafImg = new Image();
+  rottenLeafImg.src = "images/rotten_leaf.png";
+  const bombImg = new Image();
+  bombImg.src = "images/bomb.png";
+
+  const eatSound = new Audio("audio/eating.mp3");
+  const wrongSound = new Audio("audio/wrong.mp3");
+  const explodeSound = new Audio("audio/explosion.mp3");
+  const gameOver = new Audio("audio/game_over.mp3");
+
+  const backgroundMusic1 = new Audio("audio/level1_background.mp3");
+  const backgroundMusic2 = new Audio("audio/level2_background.mp3");
+  const backgroundMusic3 = new Audio("audio/level3_background.mp3");
+  backgroundMusic1.loop = true;
+  backgroundMusic2.loop = true;
+  backgroundMusic3.loop = true;
+
+  const gazelle = { x: canvas.width / 2 - 50, y: canvas.height - 200, width: 200, height: 200, speed: 10 };
+  let leftPressed = false, rightPressed = false, greenLeaves = [], rottenLeaves = [], bombs = [];
+  let score = 0, neededScore = 7, level = 1, timeLeft = 25, itemSpeed = 2, gameEnded = false;
+  let timerInterval, animationFrame;
+
+  function startGame() {
+    document.getElementById("startScreen").style.display = "none";
+    startLevel();
+    loop();
+  }
+
+  function startLevel() {
+    gameEnded = false;
+    leftPressed = rightPressed = false;
+    greenLeaves = [], rottenLeaves = [], bombs = [];
+    background = new Image();
+    background.onload = () => draw();
+    background.src = bgImages[level - 1];
+    gazelle.x = canvas.width / 2 - 50;
+    score = 0;
+    timeLeft = level === 1 ? 18 : level === 2 ? 14 : 10;
+    neededScore = level === 1 ? 20 : level === 2 ? 15 : 8;
+    itemSpeed = level === 1 ? 1 : level === 2 ? 2 : 2;
+    gazelle.speed = level === 1 ? 5 : level === 2 ? 7 : 9;
+
+    for (let i = 0; i < (level === 1 ? 30 : 20); i++) greenLeaves.push(newFallingItem(greenLeafImg, (i * timeLeft) / 30));
+    for (let i = 0; i < (level === 1 ? 8 : 6); i++) rottenLeaves.push(newFallingItem(rottenLeafImg, (i * timeLeft) / 8));
+    if (level === 3) for (let i = 0; i < 5; i++) bombs.push(newFallingItem(bombImg, (i * timeLeft) / 5));
+
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => { if (timeLeft > 0 && !gameEnded) timeLeft--; }, 1000);
+
+    backgroundMusic1.pause(); backgroundMusic2.pause(); backgroundMusic3.pause();
+    backgroundMusic1.currentTime = 0; backgroundMusic2.currentTime = 0; backgroundMusic3.currentTime = 0;
+    if (level === 1) backgroundMusic1.play();
+    else if (level === 2) backgroundMusic2.play();
+    else if (level === 3) backgroundMusic3.play();
+
+    alert({1: "🌿 Welcome to Gazelle Leaf Hunt!\nHelp her avoid the rotten ones!", 2: "🌬 More rotten leaves now!", 3: "🔥 Bombs incoming!"}[level]);
+  }
+
+  function newFallingItem(image, delay = 0) {
+    return { img: image, x: Math.random() * (canvas.width - 40), y: -Math.random() * 1000, width: 40, height: 50, speed: itemSpeed, startDelay: delay };
+  }
+
+  window.addEventListener("keydown", (e) => { if (e.keyCode === 37) leftPressed = true; if (e.keyCode === 39) rightPressed = true; });
+  window.addEventListener("keyup", (e) => { if (e.keyCode === 37) leftPressed = false; if (e.keyCode === 39) rightPressed = false; });
+
+  function draw() {
+    ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(gazelleImg, gazelle.x, gazelle.y, gazelle.width, gazelle.height);
+    drawItems(greenLeaves); drawItems(rottenLeaves); drawItems(bombs);
+    drawUI();
+  }
+
+  function drawItems(items) {
+    items.forEach(item => ctx.drawImage(item.img, item.x, item.y, item.width, item.height));
+  }
+
+  function drawUI() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(20, 10, 960, 50);
+    ctx.fillStyle = "#fff";
+    ctx.font = "20px Arial";
+    ctx.fillText(`Leaves: ${score}/${neededScore}`, 40, 40);
+    ctx.fillText(`Level: ${level}`, 450, 40);
+    ctx.fillText(`Time: ${timeLeft}`, 850, 40);
+  }
+
+  function update() {
+    if (gameEnded) return;
+    if (leftPressed) gazelle.x -= gazelle.speed;
+    if (rightPressed) gazelle.x += gazelle.speed;
+    if (gazelle.x < -gazelle.width) gazelle.x = canvas.width;
+    if (gazelle.x > canvas.width) gazelle.x = -gazelle.width;
+    moveItems(greenLeaves, "green");
+    moveItems(rottenLeaves, "rotten");
+    moveItems(bombs, "bomb");
+    checkWinOrLose();
+  }
+
+  function moveItems(items, type) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.startDelay > 0) { item.startDelay -= 1 / 60; continue; }
+      item.y += item.speed;
+      if (isColliding(gazelle, item)) {
+        if (type === "green") { score++; eatSound.play(); }
+        else if (type === "rotten") { score = Math.max(0, score - 1); wrongSound.play(); }
+        else if (type === "bomb") {
+          gameEnded = true;
+          explodeSound.play();
+          cancelAnimationFrame(animationFrame);
+          clearInterval(timerInterval);
+          showGameOverScreen("💥 Oh no! The gazelle hit a bomb!");
+          return;
+        }
+        items.splice(i, 1); i--;
+      }
+      if (item.y > canvas.height) { items.splice(i, 1); i--; }
+    }
+  }
+
+  function isColliding(a, b) {
+    return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  }
+
+  function checkWinOrLose() {
+    if (gameEnded) return;
+    if (score >= neededScore) {
+      gameEnded = true;
+      cancelAnimationFrame(animationFrame);
+      clearInterval(timerInterval);
+      if (level < 3) {
+        level++;
+        setTimeout(startLevel, 500);
+        setTimeout(() => loop(), 600);
+      } else {
+        showGameOverScreen("🏆 Congratulations! You completed all levels!");
+      }
+      return;
+    }
+    if (timeLeft <= 0) {
+      gameEnded = true;
+      cancelAnimationFrame(animationFrame);
+      clearInterval(timerInterval);
+      showGameOverScreen("😢 Time's up! Try again.");
+    }
+  }
+
+  function loop() {
+    if (gameEnded) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    draw();
+    update();
+    animationFrame = requestAnimationFrame(loop);
+  }
+
+  function showGameOverScreen(message) {
+    backgroundMusic1.pause();
+    backgroundMusic2.pause();
+    backgroundMusic3.pause();
+    gameOver.currentTime = 0;
+    gameOver.play();
+    document.getElementById("gameOverMessage").innerText = message;
+    document.getElementById("gameOverScreen").style.display = "block";
+  }
+
+  function restartGame() {
+    level = 1;
+    score = 0;
+    gameOver.pause();
+    gameOver.currentTime = 0;
+    document.getElementById("gameOverScreen").style.display = "none";
+    startLevel();
+    loop();
+  }
+</script>
+</body>
+</html>
