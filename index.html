@@ -284,15 +284,39 @@ function drawItems(items) {
 
 // Draw score, level, and time remaining
 function drawUI() {
-  ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-  ctx.fillRect(canvas.width * 0.02, canvas.height * 0.01, canvas.width * 0.96, canvas.height * 0.08);
-  ctx.fillStyle = "#fff";
-  const fontSize = Math.max(16, Math.min(canvas.height * 0.03, 40));
+  // Draw top UI bar background
+  const barPadding = canvas.width * 0.02;
+  const barHeight = canvas.height * 0.08;
+  ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+  ctx.fillRect(0, 0, canvas.width, barHeight);
+
+  // === Responsive font sizing ===
+  // Font scales with canvas width but remains within min/max bounds
+  const baseFontSize = canvas.width * 0.04; // 4% of width
+  const fontSize = Math.max(10, Math.min(baseFontSize, 30)); // clamp between 10 and 30
   ctx.font = `${fontSize}px Arial`;
-  ctx.fillText(`Leaves: ${score}/${neededScore}`, canvas.width * 0.04, canvas.height * 0.06);
-  ctx.fillText(`Level: ${level}`, canvas.width * 0.45, canvas.height * 0.06);
-  ctx.fillText(`Time: ${timeLeft}`, canvas.width * 0.85, canvas.height * 0.06);
+  ctx.fillStyle = "#ffffff";
+  ctx.textBaseline = "middle";
+
+  // Text positions
+  const y = barHeight / 2;
+  const leftX = canvas.width * 0.02;
+  const centerX = canvas.width / 2;
+  const rightX = canvas.width - canvas.width * 0.02;
+
+  // LEFT: Leaves
+  ctx.textAlign = "left";
+  ctx.fillText(`Leaves: ${score}/${neededScore}`, leftX, y);
+
+  // CENTER: Level
+  ctx.textAlign = "center";
+  ctx.fillText(`Level: ${level}`, centerX, y);
+
+  // RIGHT: Time
+  ctx.textAlign = "right";
+  ctx.fillText(`Time: ${timeLeft}`, rightX, y);
 }
+
 
 // ====== Game State Update ======
 function update() {
